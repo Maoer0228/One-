@@ -348,6 +348,28 @@
       white-space: nowrap;
     }
 
+    .month-option-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .month-option {
+      height: 42px;
+      border-radius: 12px;
+      color: var(--text);
+      background: rgba(255, 255, 255, .48);
+      border: 1px solid rgba(255, 255, 255, .50);
+      font-size: 14px;
+      font-weight: 760;
+    }
+
+    .month-option.active {
+      color: #fff;
+      background: linear-gradient(145deg, rgba(var(--primary-rgb), .96), rgba(var(--primary-rgb), .78));
+      box-shadow: 0 8px 18px rgba(var(--primary-rgb), .18);
+    }
+
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1168,41 +1190,55 @@
     }
 
     .detail-month-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
+      display: grid;
+      justify-items: center;
+      gap: 6px;
       margin-bottom: 12px;
+    }
+
+    .detail-month-control {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 40px minmax(0, max-content) 40px;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
     }
 
     .detail-month-title {
       margin: 0;
       color: var(--text);
-      font-size: 18px;
+      text-align: center;
+      font-size: 20px;
+      line-height: 1.2;
       font-weight: 800;
     }
 
     .detail-month-meta {
-      margin: 2px 0 0;
+      margin: 0;
       color: var(--muted);
       font-size: 12px;
+      text-align: center;
     }
 
     .month-switch {
-      display: flex;
-      gap: 6px;
-      flex: 0 0 auto;
+      display: contents;
     }
 
     .month-switch button {
-      width: 34px;
-      height: 34px;
-      border-radius: 8px;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
       color: var(--primary);
-      background: rgba(255, 255, 255, .48);
-      border: 1px solid rgba(255, 255, 255, .34);
-      font-size: 18px;
-      font-weight: 800;
+      background: transparent;
+      font-size: 30px;
+      line-height: 1;
+      font-weight: 360;
+    }
+
+    .month-switch button:active {
+      background: rgba(var(--primary-rgb), .08);
+      transform: scale(.98);
     }
 
     .type-tabs {
@@ -2331,6 +2367,7 @@
       entryType: "expense",
       selectedCategory: "",
       editingId: "",
+      homeMonth: "2026-06",
       statsView: "month",
       statsCursorDate: "2026-06-29",
       detailId: "t1",
@@ -2394,6 +2431,11 @@
       return `${year}年${Number(month)}月`;
     }
 
+    function monthShortLabel(key) {
+      const [, month] = key.split("-");
+      return `${Number(month)}月`;
+    }
+
     function shiftMonth(key, step) {
       const [year, month] = key.split("-").map(Number);
       const date = new Date(year, month - 1 + step, 1);
@@ -2407,6 +2449,10 @@
     function dayLabel(dateKey) {
       const [, month, day] = dateKey.split("-").map(Number);
       return `${month}月${day}日`;
+    }
+
+    function monthDayRangeLabel(start, end) {
+      return `${dayLabel(start)}至${dayLabel(end)}`;
     }
 
     function groupByDate(list) {
@@ -2701,10 +2747,10 @@
     function renderHome() {
       state.activeTab = "home";
       setNav("One记", false, "···");
-      const homeMonth = "2026-06";
+      const homeMonth = state.homeMonth;
       const currentMonthRows = state.transactions.filter(t => monthKey(t.time) === homeMonth);
       const total = totals(currentMonthRows);
-      const recent = state.transactions.slice(0, 5);
+      const recent = currentMonthRows.slice(0, 5);
       content.innerHTML = `
         <section class="hero-card card">
           <div class="hero-top">
@@ -2725,7 +2771,12 @@
             <button class="section-action" id="allDetails">查看全部</button>
           </div>
           <div class="card list">
-            ${recent.map(recordTemplate).join("")}
+            ${recent.length ? recent.map(recordTemplate).join("") : `
+              <div class="empty" style="padding:18px 10px">
+                <h2 class="empty-title">这个月还没有账单</h2>
+                <p class="empty-copy">切换月份或点击右下角添加一笔。</p>
+              </div>
+            `}
           </div>
         </section>
         <button class="fab-entry" id="quickEntry" aria-label="记一笔">
@@ -2742,14 +2793,52 @@
         state.entryTime = APP_NOW;
         setPage("entry");
       };
-      document.getElementById("allDetails").onclick = () => goTab("details");
-      document.getElementById("monthPicker").onclick = () => showToast("月份 Picker：可切换历史月份");
+      document.getElementById("allDetails").onclick = () => {
+        state.detailMonth = state.homeMonth;
+        goTab("details");
+      };
+      document.getElementById("monthPicker").onclick = showHomeMonthPicker;
       content.querySelectorAll(".record").forEach(row => {
         row.addEventListener("click", () => {
           state.detailId = row.dataset.id;
           setPage("detail");
         });
       });
+    }
+
+    function showHomeMonthPicker() {
+      const currentMonth = APP_NOW.slice(0, 7);
+      const monthOptions = Array.from({ length: 6 }, (_, index) => shiftMonth(currentMonth, -index));
+      sheetMask.classList.add("show");
+      sheetMask.innerHTML = `
+        <div class="bottom-sheet" role="dialog" aria-label="选择首页月份">
+          <div class="sheet-head">
+            <h2 class="sheet-title">选择月份</h2>
+            <button class="sheet-link" id="homeMonthReset">回到本月</button>
+          </div>
+          <div class="month-option-grid">
+            ${monthOptions.map(key => `
+              <button class="month-option ${state.homeMonth === key ? "active" : ""}" data-home-month="${key}">${monthLabel(key)}</button>
+            `).join("")}
+          </div>
+          <p class="privacy-line">切换月份后，首页结余、收支和最近记录同步刷新。</p>
+        </div>
+      `;
+      sheetMask.querySelectorAll("[data-home-month]").forEach(btn => {
+        btn.onclick = () => {
+          state.homeMonth = btn.dataset.homeMonth;
+          closeSheet();
+          renderHome();
+        };
+      });
+      document.getElementById("homeMonthReset").onclick = () => {
+        state.homeMonth = currentMonth;
+        closeSheet();
+        renderHome();
+      };
+      sheetMask.onclick = event => {
+        if (event.target === sheetMask) closeSheet();
+      };
     }
 
     function recordTemplate(t) {
@@ -3255,14 +3344,12 @@
       content.innerHTML = `
         <section class="card detail-filter-card">
           <div class="detail-month-row">
-            <div>
-              <h2 class="detail-month-title">${monthLabel(state.detailMonth)}</h2>
-              <p class="detail-month-meta">${typeLabel(state.filterType)} ${typeRows.length} 笔 · ¥${money(typeTotal)}</p>
+            <div class="detail-month-control" aria-label="月份切换">
+              <div class="month-switch"><button data-month-step="-1" aria-label="上个月">‹</button></div>
+              <h2 class="detail-month-title">${monthShortLabel(state.detailMonth)}</h2>
+              <div class="month-switch"><button data-month-step="1" aria-label="下个月">›</button></div>
             </div>
-            <div class="month-switch" aria-label="月份切换">
-              <button data-month-step="-1" aria-label="上个月">‹</button>
-              <button data-month-step="1" aria-label="下个月">›</button>
-            </div>
+            <p class="detail-month-meta">${typeLabel(state.filterType)} ${typeRows.length} 笔 · ¥${money(typeTotal)}</p>
           </div>
           <div class="type-tabs" role="tablist" aria-label="收支类型">
             <button class="type-tab ${state.filterType === "expense" ? "active" : ""}" data-filter-type="expense" role="tab">支出</button>
@@ -3411,7 +3498,7 @@
       if (view === "week") {
         const start = shiftDay(cursor, -6);
         return {
-          label: `${start}至${cursor}`,
+          label: monthDayRangeLabel(start, cursor),
           title: "周趋势",
           chartClass: "week-chart",
           labelClass: "week-label",
@@ -3436,7 +3523,7 @@
       }
       const start = shiftDay(cursor, -29);
       return {
-        label: `${start}至${cursor}`,
+        label: monthDayRangeLabel(start, cursor),
         title: "月趋势",
         chartClass: "month-chart",
         labelClass: "month-label",
