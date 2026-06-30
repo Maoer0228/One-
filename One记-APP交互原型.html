@@ -984,6 +984,65 @@
       background: linear-gradient(to bottom, rgba(247, 246, 249, 0), color-mix(in srgb, var(--theme-screen-end) 92%, white 8%) 28%);
     }
 
+    .entry-meta-list {
+      margin-top: 18px;
+      background:
+        linear-gradient(145deg, rgba(255, 255, 255, .72), rgba(255, 255, 255, .34)),
+        linear-gradient(28deg, rgba(var(--primary-rgb), .08), rgba(255, 255, 255, .16));
+      border-color: rgba(255, 255, 255, .42);
+      box-shadow: 0 14px 34px rgba(var(--primary-rgb), .12), var(--glass-inset);
+    }
+
+    .entry-meta-list .cell {
+      width: 100%;
+      min-height: 54px;
+      padding: 0 18px;
+      grid-template-columns: 52px minmax(0, 1fr) 10px;
+      column-gap: 14px;
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border-bottom: 1px solid rgba(20, 20, 20, .06);
+    }
+
+    .entry-meta-list .cell-label {
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 760;
+    }
+
+    .entry-meta-list .cell-value {
+      color: var(--text);
+      font-size: 17px;
+      line-height: 1.2;
+      font-weight: 760;
+      letter-spacing: 0;
+    }
+
+    .entry-meta-list .cell-arrow {
+      width: 9px;
+      height: 9px;
+      margin-right: 0;
+      border-color: rgba(20, 20, 20, .48);
+    }
+
+    .entry-save-wrap {
+      position: relative;
+      bottom: auto;
+      margin-top: 18px;
+      padding: 14px 0 6px;
+      background:
+        linear-gradient(to bottom, rgba(247, 246, 249, 0), color-mix(in srgb, var(--theme-screen-end) 88%, white 12%) 36%);
+    }
+
+    .entry-save-btn {
+      min-height: 52px;
+      border-radius: 16px;
+      font-size: 17px;
+      font-weight: 800;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .24), 0 12px 26px rgba(var(--primary-rgb), .18);
+    }
+
     .sheet-mask,
     .modal-mask {
       position: absolute;
@@ -2907,12 +2966,12 @@
             `).join("")}
           </div>
         </section>
-        <section class="section card form-list">
+        <section class="section card form-list entry-meta-list">
           <button class="cell is-link" id="dateCell"><span class="cell-label">时间</span><span class="cell-value">${formatDateTimeDisplay(selectedTime)}</span><span class="cell-arrow" aria-hidden="true"></span></button>
           <button class="cell is-link" id="noteCell"><span class="cell-label">备注</span><span class="cell-value">${editing ? editing.note : "选填，最多50字"}</span><span class="cell-arrow" aria-hidden="true"></span></button>
         </section>
-        <div class="sticky-action">
-          <button class="btn primary" style="width:100%" id="saveEntry">${editing ? "保存修改" : "保存"}</button>
+        <div class="sticky-action entry-save-wrap">
+          <button class="btn primary entry-save-btn" style="width:100%" id="saveEntry">${editing ? "保存修改" : "保存"}</button>
         </div>
       `;
       content.querySelectorAll(".segmented button").forEach(btn => {
@@ -3294,13 +3353,13 @@
             `).join("")}
           </div>
         </section>
-        <section class="section card form-list">
+        <section class="section card form-list entry-meta-list">
           <button class="cell is-link"><span class="cell-label">商户</span><span class="cell-value">便利生活超市</span><span class="cell-arrow" aria-hidden="true"></span></button>
           <button class="cell is-link" id="receiptDateCell"><span class="cell-label">时间</span><span class="cell-value">${formatDateTimeDisplay(state.receiptTime)}</span><span class="cell-arrow" aria-hidden="true"></span></button>
           <button class="cell is-link"><span class="cell-label">备注</span><span class="cell-value">日用品、饮料</span><span class="cell-arrow" aria-hidden="true"></span></button>
         </section>
-        <div class="sticky-action">
-          <button class="btn primary" style="width:100%" id="saveReceipt">确认保存</button>
+        <div class="sticky-action entry-save-wrap">
+          <button class="btn primary entry-save-btn" style="width:100%" id="saveReceipt">确认保存</button>
         </div>
       `;
       content.querySelectorAll(".category").forEach(btn => {
