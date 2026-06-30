@@ -714,6 +714,60 @@
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), 0 6px 14px rgba(var(--primary-rgb), .18);
     }
 
+    .stats-period {
+      margin-top: 4px;
+      padding: 0 2px 2px;
+    }
+
+    .stats-period .segmented {
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .46);
+    }
+
+    .stats-period .segmented button {
+      height: 34px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 760;
+    }
+
+    .stats-range-switch {
+      margin: 12px 0 2px;
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) 40px;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stats-range-switch button {
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text);
+      background: transparent;
+      font-size: 32px;
+      line-height: 1;
+      font-weight: 360;
+      border-radius: 12px;
+    }
+
+    .stats-range-switch button:active {
+      background: rgba(20, 20, 20, .06);
+      transform: scale(.98);
+    }
+
+    .stats-range-label {
+      margin: 0;
+      color: var(--text);
+      text-align: center;
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
     .money-input {
       margin-top: 14px;
       padding: 18px;
@@ -2278,6 +2332,7 @@
       selectedCategory: "",
       editingId: "",
       statsView: "month",
+      statsCursorDate: "2026-06-29",
       detailId: "t1",
       detailMonth: "2026-06",
       filterType: "expense",
@@ -3335,38 +3390,72 @@
       modalMask.innerHTML = "";
     }
 
-    function statsLineData(view) {
+    function compactDateLabel(dateKey) {
+      const [, month, day] = dateKey.split("-").map(Number);
+      return `${month}/${day}`;
+    }
+
+    function shiftYearDate(dateKey, step) {
+      const [year, month, day] = dateKey.split("-").map(Number);
+      const date = new Date(year + step, month - 1, day);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    }
+
+    function statValue(seed, index) {
+      const code = Array.from(seed).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+      return 18 + ((code * 7 + index * 17) % 72);
+    }
+
+    function statsPeriodMeta(view) {
+      const cursor = state.statsCursorDate;
       if (view === "week") {
+        const start = shiftDay(cursor, -6);
         return {
-          title: "近7天趋势",
+          label: `${start}至${cursor}`,
+          title: "周趋势",
           chartClass: "week-chart",
           labelClass: "week-label",
-          points: [
-            ["6/23", 35], ["6/24", 56], ["6/25", 28], ["6/26", 68], ["6/27", 52], ["6/28", 16], ["6/29", 42]
-          ]
+          points: Array.from({ length: 7 }, (_, index) => {
+            const date = shiftDay(start, index);
+            return [compactDateLabel(date), statValue(date, index)];
+          })
         };
       }
       if (view === "year") {
+        const year = cursor.slice(0, 4);
         return {
-          title: "近12个月趋势",
+          label: `${year}年`,
+          title: "年趋势",
           chartClass: "year-chart",
           labelClass: "year-label",
-          points: [
-            ["7月", 42], ["8月", 58], ["9月", 47], ["10月", 72], ["11月", 54], ["12月", 83],
-            ["1月", 62], ["2月", 38], ["3月", 74], ["4月", 45], ["5月", 82], ["6月", 68]
-          ]
+          points: Array.from({ length: 12 }, (_, index) => {
+            const month = index + 1;
+            return [`${month}月`, statValue(`${year}-${month}`, index)];
+          })
         };
       }
+      const start = shiftDay(cursor, -29);
       return {
-        title: "近30天趋势",
+        label: `${start}至${cursor}`,
+        title: "月趋势",
         chartClass: "month-chart",
         labelClass: "month-label",
         points: Array.from({ length: 30 }, (_, index) => {
-          const day = index + 1;
-          const values = [28, 42, 35, 58, 46, 30, 22, 64, 48, 34, 55, 40, 25, 68, 52, 36, 44, 72, 31, 40, 62, 54, 38, 70, 86, 48, 33, 57, 45, 18];
-          return [String(day), values[index]];
+          const date = shiftDay(start, index);
+          return [String(Number(date.slice(8, 10))), statValue(date, index)];
         })
       };
+    }
+
+    function shiftStatsPeriod(step) {
+      if (state.statsView === "week") {
+        state.statsCursorDate = shiftDay(state.statsCursorDate, step * 7);
+      } else if (state.statsView === "year") {
+        state.statsCursorDate = shiftYearDate(state.statsCursorDate, step);
+      } else {
+        state.statsCursorDate = shiftDay(state.statsCursorDate, step * 30);
+      }
+      renderStats();
     }
 
     function lineChartTemplate(chart) {
@@ -3406,13 +3495,20 @@
       state.activeTab = "stats";
       setNav("统计", false, "");
       const total = totals();
-      const chart = statsLineData(state.statsView);
+      const chart = statsPeriodMeta(state.statsView);
       content.innerHTML = `
-        <div class="segmented three">
-          <button class="${state.statsView === "week" ? "active" : ""}" data-view="week">周</button>
-          <button class="${state.statsView === "month" ? "active" : ""}" data-view="month">月</button>
-          <button class="${state.statsView === "year" ? "active" : ""}" data-view="year">年</button>
-        </div>
+        <section class="stats-period" aria-label="统计周期切换">
+          <div class="segmented three">
+            <button class="${state.statsView === "week" ? "active" : ""}" data-view="week">周</button>
+            <button class="${state.statsView === "month" ? "active" : ""}" data-view="month">月</button>
+            <button class="${state.statsView === "year" ? "active" : ""}" data-view="year">年</button>
+          </div>
+          <div class="stats-range-switch" aria-label="统计时间切换">
+            <button data-stats-step="-1" aria-label="上一个统计周期">‹</button>
+            <p class="stats-range-label">${chart.label}</p>
+            <button data-stats-step="1" aria-label="下一个统计周期">›</button>
+          </div>
+        </section>
         <section class="section card stats-total">
           <div class="metric"><p class="metric-label">总支出</p><p class="metric-value amount expense">¥${money(total.expense)}</p></div>
           <div class="metric"><p class="metric-label">总收入</p><p class="metric-value amount income">¥${money(total.income)}</p></div>
@@ -3450,6 +3546,9 @@
           state.statsView = btn.dataset.view;
           renderStats();
         };
+      });
+      content.querySelectorAll("[data-stats-step]").forEach(btn => {
+        btn.onclick = () => shiftStatsPeriod(Number(btn.dataset.statsStep));
       });
       document.getElementById("refreshStats").onclick = () => showToast("统计数据已刷新");
     }
